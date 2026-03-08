@@ -1,0 +1,36 @@
+[project]
+name = "mcp-manticore"
+version = "0.1.0"
+description = "An MCP server for Manticore Search."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=2.0.0",
+    "python-dotenv>=1.0.1",
+    "manticoresearch>=3.3.1",
+]
+
+[project.scripts]
+mcp-manticore = "mcp_manticore.main:main"
+
+[project.urls]
+Home = "https://github.com/manticoresoftware/manticoresearch-mcp"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pytest",
+    "pytest-asyncio"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_manticore"]
+
+[tool.ruff]
+line-length = 100
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
