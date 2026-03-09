@@ -13,9 +13,11 @@ from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_context
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
+import httpx
 
 from mcp_manticore.mcp_env import get_config, get_mcp_config, TransportType
 from mcp_manticore.manticore_prompt import MANTICORE_PROMPT
+from mcp_manticore.docs_fetcher import list_documentation_files, fetch_documentation, format_doc_list
 from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 
 
@@ -289,6 +291,88 @@ def describe_table(table_name: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error describing table {table_name}: {str(e)}")
         raise ToolError(f"Failed to describe table {table_name}: {str(e)}")
+
+
+@mcp.tool()
+async def list_documentation(search: Optional[str] = None) -> str:
+    """List all available documentation files from Manticore Search manual.
+    
+    Fetches file list from GitHub API (cached after first call).
+    Use this tool to discover available documentation before using get_documentation.
+    
+    Args:
+        search: Optional search term to filter files (e.g., "knn", "full-text", "cluster")
+    
+    Returns:
+        List of available documentation files, grouped by category
+    
+    Examples:
+        # List all documentation
+        list_documentation()
+        
+        # Search for KNN-related docs
+        list_documentation(search="knn")
+        
+        # Search for full-text search docs
+        list_documentation(search="full-text")
+    """
+    logger.info(f"Listing documentation files, search={search}")
+    
+    try:
+        files = await list_documentation_files()
+        
+        if search:
+            # Filter by search term
+            search_lower = search.lower()
+            files = [f for f in files if search_lower in f.lower()]
+        
+        return format_doc_list(files)
+    except httpx.HTTPError as e:
+        logger.error(f"Failed to list documentation: {str(e)}")
+        raise ToolError(f"Failed to fetch documentation list from GitHub: {str(e)}")
+
+
+@mcp.tool()
+async def get_documentation(
+    file_path: str,
+    content: Optional[str] = None,
+    before: int = 0,
+    after: int = 0
+) -> str:
+    """Fetch documentation from Manticore Search manual.
+    
+    Use list_documentation() first to discover available files.
+    
+    Args:
+        file_path: Path to documentation file (e.g., "Searching/KNN.md")
+        content: Optional search term to filter content (returns only matching sections)
+        before: Number of lines before match to include (default: 0)
+        after: Number of lines after match to include (default: 0)
+    
+    Returns:
+        Documentation content as markdown text
+    
+    Examples:
+        # Get full KNN documentation
+        get_documentation("Searching/KNN.md")
+        
+        # Search for "MATCH" in full-text operators
+        get_documentation("Searching/Full_text_matching/Operators.md", content="MATCH", before=2, after=2)
+        
+        # Get data types documentation
+        get_documentation("Creating_a_table/Data_types.md")
+    """
+    logger.info(f"Fetching documentation: {file_path}, content={content}, before={before}, after={after}")
+    
+    try:
+        result = await fetch_documentation(file_path, content, before, after)
+        return result
+    except ValueError as e:
+        logger.error(f"Invalid documentation path: {file_path}")
+        raise ToolError(str(e))
+    except httpx.HTTPError as e:
+        logger.error(f"Failed to fetch documentation: {str(e)}")
+        raise ToolError(f"Failed to fetch documentation from GitHub: {str(e)}")
 
 
 def manticore_initial_prompt() -> str:

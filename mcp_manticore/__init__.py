@@ -5,6 +5,7 @@ from .mcp_server import (
     list_tables,
     run_query,
     describe_table,
+    get_documentation,
     manticore_initial_prompt,
 )
 
@@ -19,6 +20,7 @@ __all__ = [
     "list_tables",
     "run_query",
     "describe_table",
+    "get_documentation",
     "create_manticore_client",
     "manticore_initial_prompt",
 ]

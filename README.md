@@ -11,6 +11,8 @@ An MCP server for Manticore Search.
 * `run_query` - Execute SQL queries (SELECT, SHOW, DESCRIBE, etc.)
 * `list_tables` - List all tables/indexes
 * `describe_table` - Get table schema
+* `list_documentation` - List available documentation files from GitHub (discover before fetching)
+* `get_documentation` - Fetch specific documentation file from Manticore Search manual
 
 ### Prompt
 
@@ -44,6 +46,13 @@ pip install mcp-manticore
 - `MANTICORE_MCP_BIND_PORT` - Bind port for HTTP/SSE (default: `8000`)
 - `MANTICORE_MCP_AUTH_TOKEN` - Auth token for HTTP/SSE (optional)
 - `MANTICORE_MCP_AUTH_DISABLED` - Disable auth (default: `false`)
+
+### GitHub API (Optional)
+
+- `GITHUB_TOKEN` - GitHub personal access token (optional, increases rate limit from 60 to 5000 requests/hour)
+  - Without token: 60 requests/hour per IP
+  - With token: 5000 requests/hour
+  - Used for fetching documentation from Manticore Search manual
 
 ## Usage
 
@@ -108,6 +117,7 @@ uv run pytest
 - `mcp_manticore/mcp_env.py` - Configuration
 - `mcp_manticore/mcp_server.py` - MCP server with tools and prompts
 - `mcp_manticore/manticore_prompt.py` - LLM guidance
+- `mcp_manticore/docs_fetcher.py` - Documentation fetcher
 - `mcp_manticore/main.py` - Entry point
 
 ## License
