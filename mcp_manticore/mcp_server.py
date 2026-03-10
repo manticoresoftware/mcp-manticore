@@ -150,39 +150,44 @@ def create_manticore_client():
         raise
 
 
-def _validate_query_for_destructive_ops(query: str):
-    """Validate query for destructive operations based on configuration.
+def _validate_query_access(query: str):
+    """Validate query for write and destructive operations based on configuration.
 
     Raises:
-        ToolError: If the query contains destructive operations but
-            MANTICORE_ALLOW_DROP is not set, or if write access is disabled
-            and destructive operations are attempted.
+        ToolError: If write access is disabled and write operations are attempted,
+            or if MANTICORE_ALLOW_DROP is not set for DROP/TRUNCATE operations.
 
     This implements a two-level safety check:
-    1. If MANTICORE_ALLOW_WRITE_ACCESS=false (default), block all destructive ops
+    1. If MANTICORE_ALLOW_WRITE_ACCESS=false (default), block all write operations
     2. If MANTICORE_ALLOW_WRITE_ACCESS=true, still require MANTICORE_ALLOW_DROP=true
        for DROP/TRUNCATE operations
     """
     config = get_config()
 
-    # Simple pattern matching for destructive operations
+    # Pattern matching for write operations
+    # Manticore supports: INSERT, REPLACE, UPDATE, DELETE
+    write_pattern = r"\b(INSERT\s+INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM?)\b"
+    is_write = re.search(write_pattern, query, re.IGNORECASE)
+
+    # Pattern matching for destructive operations
     # Manticore supports: DROP TABLE, DROP INDEX, TRUNCATE TABLE
     destructive_pattern = r"\b(DROP\s+(TABLE|INDEX)|TRUNCATE\s+TABLE?)\b"
     is_destructive = re.search(destructive_pattern, query, re.IGNORECASE)
 
-    if not is_destructive:
-        return  # Not a destructive operation, allow it
+    # If no write operations, allow it (read-only)
+    if not is_write and not is_destructive:
+        return
 
-    # If writes are not enabled, block all destructive operations
+    # Block all write operations if write access is disabled
     if not config.allow_write_access:
         raise ToolError(
-            "Destructive operations (DROP TABLE, DROP INDEX, TRUNCATE) require "
+            "Write operations (INSERT, REPLACE, UPDATE, DELETE, DROP, TRUNCATE) require "
             "MANTICORE_ALLOW_WRITE_ACCESS=true. "
-            "This is a safety feature to prevent accidental data deletion."
+            "This is a safety feature to prevent accidental data modification."
         )
 
-    # Writes are enabled, but DROP requires explicit permission
-    if not config.allow_drop:
+    # Writes are enabled, but DROP/TRUNCATE require explicit permission
+    if is_destructive and not config.allow_drop:
         raise ToolError(
             "Destructive operations (DROP TABLE, DROP INDEX, TRUNCATE) are not allowed. "
             "Set MANTICORE_ALLOW_DROP=true to enable these operations. "
@@ -202,7 +207,7 @@ def execute_query(query: str):
     client = create_manticore_client()
     try:
         # Validate query for destructive operations
-        _validate_query_for_destructive_ops(query)
+        _validate_query_access(query)
 
         # Execute the SQL query using the utils API
         # The sql() method returns SqlResponse which can be:

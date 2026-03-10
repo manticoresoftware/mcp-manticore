@@ -159,20 +159,20 @@ class TestQueryValidation:
         """Test that DROP TABLE is blocked when write access is disabled."""
         from fastmcp.exceptions import ToolError
 
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
-        with pytest.raises(ToolError, match="Destructive operations"):
-            _validate_query_for_destructive_ops("DROP TABLE myindex")
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("DROP TABLE myindex")
 
     @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
     def test_validate_destructive_ops_truncate_blocked(self):
         """Test that TRUNCATE is blocked when write access is disabled."""
         from fastmcp.exceptions import ToolError
 
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
-        with pytest.raises(ToolError, match="Destructive operations"):
-            _validate_query_for_destructive_ops("TRUNCATE TABLE myindex")
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("TRUNCATE TABLE myindex")
 
     @patch.dict(
         os.environ,
@@ -182,10 +182,10 @@ class TestQueryValidation:
         """Test that DROP is blocked even with write access when allow_drop is false."""
         from fastmcp.exceptions import ToolError
 
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
         with pytest.raises(ToolError, match="Destructive operations"):
-            _validate_query_for_destructive_ops("DROP TABLE myindex")
+            _validate_query_access("DROP TABLE myindex")
 
     @patch.dict(
         os.environ,
@@ -193,42 +193,79 @@ class TestQueryValidation:
     )
     def test_validate_destructive_ops_drop_allowed(self):
         """Test that DROP is allowed when both flags are set."""
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
         # Should not raise any error
-        _validate_query_for_destructive_ops("DROP TABLE myindex")
+        _validate_query_access("DROP TABLE myindex")
 
     @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
     def test_validate_select_allowed(self):
         """Test that SELECT queries are allowed in read-only mode."""
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
         # Should not raise any error
-        _validate_query_for_destructive_ops("SELECT * FROM myindex")
+        _validate_query_access("SELECT * FROM myindex")
 
     @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
     def test_validate_show_tables_allowed(self):
         """Test that SHOW TABLES is allowed in read-only mode."""
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
         # Should not raise any error
-        _validate_query_for_destructive_ops("SHOW TABLES")
+        _validate_query_access("SHOW TABLES")
 
     @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "true"})
     def test_validate_insert_allowed_with_write_access(self):
         """Test that INSERT is allowed with write access."""
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
         # Should not raise any error
-        _validate_query_for_destructive_ops("INSERT INTO myindex (id, title) VALUES (1, 'test')")
+        _validate_query_access("INSERT INTO myindex (id, title) VALUES (1, 'test')")
 
     @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
     def test_validate_insert_blocked_without_write_access(self):
         """Test that INSERT is blocked without write access."""
+        from fastmcp.exceptions import ToolError
 
-        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+        from mcp_manticore.mcp_server import _validate_query_access
 
-        # Note: INSERT is not a destructive operation, but write access check
-        # happens at the server level. This test validates the destructive ops check.
-        # INSERT should pass the destructive ops check (it's not DROP/TRUNCATE)
-        _validate_query_for_destructive_ops("INSERT INTO myindex (id, title) VALUES (1, 'test')")
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("INSERT INTO myindex (id, title) VALUES (1, 'test')")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_replace_blocked_without_write_access(self):
+        """Test that REPLACE is blocked without write access."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_access
+
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("REPLACE INTO myindex (id, title) VALUES (1, 'test')")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_update_blocked_without_write_access(self):
+        """Test that UPDATE is blocked without write access."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_access
+
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("UPDATE myindex SET title = 'new' WHERE id = 1")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_delete_blocked_without_write_access(self):
+        """Test that DELETE is blocked without write access."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_access
+
+        with pytest.raises(ToolError, match="Write operations"):
+            _validate_query_access("DELETE FROM myindex WHERE id = 1")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "true"})
+    def test_validate_replace_allowed_with_write_access(self):
+        """Test that REPLACE is allowed with write access."""
+        from mcp_manticore.mcp_server import _validate_query_access
+
+        # Should not raise any error
+        _validate_query_access("REPLACE INTO myindex (id, title) VALUES (1, 'test')")
