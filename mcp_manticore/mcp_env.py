@@ -39,6 +39,10 @@ class ManticoreConfig:
         MANTICORE_DATABASE: Default database/index to use (default: None)
         MANTICORE_CONNECT_TIMEOUT: Connection timeout in seconds (default: 30)
         MANTICORE_QUERY_TIMEOUT: Query timeout in seconds (default: 30)
+        MANTICORE_ALLOW_WRITE_ACCESS: Allow write operations (DDL and DML)
+            (default: false)
+        MANTICORE_ALLOW_DROP: Allow destructive operations (DROP, TRUNCATE)
+            when writes are enabled (default: false)
     """
 
     @property
@@ -87,6 +91,25 @@ class ManticoreConfig:
         Default: 30
         """
         return int(os.getenv("MANTICORE_QUERY_TIMEOUT", "30"))
+
+    @property
+    def allow_write_access(self) -> bool:
+        """Get whether write operations (DDL and DML) are allowed.
+
+        Default: False
+        """
+        return os.getenv("MANTICORE_ALLOW_WRITE_ACCESS", "false").lower() == "true"
+
+    @property
+    def allow_drop(self) -> bool:
+        """Get whether DROP operations (DROP TABLE, DROP INDEX) are allowed.
+
+        This setting provides an additional safety layer when write access is enabled.
+        Even with MANTICORE_ALLOW_WRITE_ACCESS=true, DROP operations require this flag.
+
+        Default: False
+        """
+        return os.getenv("MANTICORE_ALLOW_DROP", "false").lower() == "true"
 
     def get_client_config(self) -> dict:
         """Get the configuration dictionary for manticoresearch client.

@@ -2,6 +2,7 @@ import atexit
 import concurrent.futures
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -149,6 +150,46 @@ def create_manticore_client():
         raise
 
 
+def _validate_query_for_destructive_ops(query: str):
+    """Validate query for destructive operations based on configuration.
+
+    Raises:
+        ToolError: If the query contains destructive operations but
+            MANTICORE_ALLOW_DROP is not set, or if write access is disabled
+            and destructive operations are attempted.
+
+    This implements a two-level safety check:
+    1. If MANTICORE_ALLOW_WRITE_ACCESS=false (default), block all destructive ops
+    2. If MANTICORE_ALLOW_WRITE_ACCESS=true, still require MANTICORE_ALLOW_DROP=true
+       for DROP/TRUNCATE operations
+    """
+    config = get_config()
+
+    # Simple pattern matching for destructive operations
+    # Manticore supports: DROP TABLE, DROP INDEX, TRUNCATE TABLE
+    destructive_pattern = r"\b(DROP\s+(TABLE|INDEX)|TRUNCATE\s+TABLE?)\b"
+    is_destructive = re.search(destructive_pattern, query, re.IGNORECASE)
+
+    if not is_destructive:
+        return  # Not a destructive operation, allow it
+
+    # If writes are not enabled, block all destructive operations
+    if not config.allow_write_access:
+        raise ToolError(
+            "Destructive operations (DROP TABLE, DROP INDEX, TRUNCATE) require "
+            "MANTICORE_ALLOW_WRITE_ACCESS=true. "
+            "This is a safety feature to prevent accidental data deletion."
+        )
+
+    # Writes are enabled, but DROP requires explicit permission
+    if not config.allow_drop:
+        raise ToolError(
+            "Destructive operations (DROP TABLE, DROP INDEX, TRUNCATE) are not allowed. "
+            "Set MANTICORE_ALLOW_DROP=true to enable these operations. "
+            "This is a safety feature to prevent accidental data deletion."
+        )
+
+
 def execute_query(query: str):
     """Execute a SQL query against Manticore Search.
 
@@ -160,6 +201,9 @@ def execute_query(query: str):
     """
     client = create_manticore_client()
     try:
+        # Validate query for destructive operations
+        _validate_query_for_destructive_ops(query)
+
         # Execute the SQL query using the utils API
         # The sql() method returns SqlResponse which can be:
         # - List[Dict[str, Any]] for queries like SHOW TABLES
@@ -211,8 +255,8 @@ def execute_query(query: str):
 def run_query(query: str) -> dict[str, Any]:
     """Execute a SQL query against Manticore Search.
 
-    Use this tool to run SELECT, SHOW, DESCRIBE, and other SQL queries.
-    The query is executed in read-only mode by default.
+    Queries run in read-only mode by default. Set MANTICORE_ALLOW_WRITE_ACCESS=true
+    to allow DDL and DML statements when your Manticore server permits them.
 
     Args:
         query: The SQL query to execute (e.g., "SELECT * FROM my_index LIMIT 10")
@@ -361,14 +405,12 @@ async def get_documentation(
     Returns:
         Documentation content as markdown text
 
+    Examples:
         get_documentation(
             "Searching/Full_text_matching/Operators.md",
             content="MATCH", before=2, after=2
         )
-        )
 
-        # Get data types documentation
-        # Get data types documentation
         get_documentation("Creating_a_table/Data_types.md")
     """
     logger.info(

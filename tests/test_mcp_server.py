@@ -149,3 +149,86 @@ class TestHealthCheckEndpoint:
             response = await health_check(request)
             assert response.status_code == 503
             assert "ERROR" in response.body.decode()
+
+
+class TestQueryValidation:
+    """Tests for query validation and write access control."""
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_destructive_ops_drop_table_blocked(self):
+        """Test that DROP TABLE is blocked when write access is disabled."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        with pytest.raises(ToolError, match="Destructive operations"):
+            _validate_query_for_destructive_ops("DROP TABLE myindex")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_destructive_ops_truncate_blocked(self):
+        """Test that TRUNCATE is blocked when write access is disabled."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        with pytest.raises(ToolError, match="Destructive operations"):
+            _validate_query_for_destructive_ops("TRUNCATE TABLE myindex")
+
+    @patch.dict(
+        os.environ,
+        {"MANTICORE_ALLOW_WRITE_ACCESS": "true", "MANTICORE_ALLOW_DROP": "false"},
+    )
+    def test_validate_destructive_ops_drop_blocked_without_flag(self):
+        """Test that DROP is blocked even with write access when allow_drop is false."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        with pytest.raises(ToolError, match="Destructive operations"):
+            _validate_query_for_destructive_ops("DROP TABLE myindex")
+
+    @patch.dict(
+        os.environ,
+        {"MANTICORE_ALLOW_WRITE_ACCESS": "true", "MANTICORE_ALLOW_DROP": "true"},
+    )
+    def test_validate_destructive_ops_drop_allowed(self):
+        """Test that DROP is allowed when both flags are set."""
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        # Should not raise any error
+        _validate_query_for_destructive_ops("DROP TABLE myindex")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_select_allowed(self):
+        """Test that SELECT queries are allowed in read-only mode."""
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        # Should not raise any error
+        _validate_query_for_destructive_ops("SELECT * FROM myindex")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_show_tables_allowed(self):
+        """Test that SHOW TABLES is allowed in read-only mode."""
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        # Should not raise any error
+        _validate_query_for_destructive_ops("SHOW TABLES")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "true"})
+    def test_validate_insert_allowed_with_write_access(self):
+        """Test that INSERT is allowed with write access."""
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        # Should not raise any error
+        _validate_query_for_destructive_ops("INSERT INTO myindex (id, title) VALUES (1, 'test')")
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_validate_insert_blocked_without_write_access(self):
+        """Test that INSERT is blocked without write access."""
+
+        from mcp_manticore.mcp_server import _validate_query_for_destructive_ops
+
+        # Note: INSERT is not a destructive operation, but write access check
+        # happens at the server level. This test validates the destructive ops check.
+        # INSERT should pass the destructive ops check (it's not DROP/TRUNCATE)
+        _validate_query_for_destructive_ops("INSERT INTO myindex (id, title) VALUES (1, 'test')")

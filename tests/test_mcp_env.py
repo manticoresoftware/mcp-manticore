@@ -45,6 +45,8 @@ class TestManticoreConfig:
         assert config.database is None
         assert config.connect_timeout == 30
         assert config.query_timeout == 30
+        assert config.allow_write_access is False
+        assert config.allow_drop is False
 
     @patch.dict(
         os.environ,
@@ -87,6 +89,30 @@ class TestManticoreConfig:
         client_config = config.get_client_config()
         assert client_config["username"] == "admin"
         assert client_config["password"] == "secret"
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "true"})
+    def test_allow_write_access_true(self):
+        """Test allow_write_access can be set to true."""
+        config = ManticoreConfig()
+        assert config.allow_write_access is True
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_WRITE_ACCESS": "false"})
+    def test_allow_write_access_false(self):
+        """Test allow_write_access defaults to false."""
+        config = ManticoreConfig()
+        assert config.allow_write_access is False
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_DROP": "true"})
+    def test_allow_drop_true(self):
+        """Test allow_drop can be set to true."""
+        config = ManticoreConfig()
+        assert config.allow_drop is True
+
+    @patch.dict(os.environ, {"MANTICORE_ALLOW_DROP": "false"})
+    def test_allow_drop_false(self):
+        """Test allow_drop defaults to false."""
+        config = ManticoreConfig()
+        assert config.allow_drop is False
 
 
 class TestMCPServerConfig:
