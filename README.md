@@ -39,6 +39,23 @@ pip install mcp-manticore
 - `MANTICORE_CONNECT_TIMEOUT` - Connection timeout (default: `30`)
 - `MANTICORE_QUERY_TIMEOUT` - Query timeout (default: `30`)
 
+
+### Write Access Control
+
+Safety features to prevent accidental data modification:
+
+- `MANTICORE_ALLOW_WRITE_ACCESS` - Enable write operations (default: `false`)
+  - When `false`: All write operations are blocked (INSERT, REPLACE, UPDATE, DELETE, DROP, TRUNCATE)
+  - When `true`: Write operations are allowed, but destructive operations still require explicit permission
+- `MANTICORE_ALLOW_DROP` - Enable destructive operations (default: `false`)
+  - When `false`: DROP TABLE, DROP INDEX, TRUNCATE are blocked
+  - When `true`: Destructive operations are allowed (requires `MANTICORE_ALLOW_WRITE_ACCESS=true`)
+
+**Safety Pattern:**
+1. Read-only by default (both flags `false`)
+2. Enable writes: `MANTICORE_ALLOW_WRITE_ACCESS=true`
+3. Enable destructive ops: Both `MANTICORE_ALLOW_WRITE_ACCESS=true` AND `MANTICORE_ALLOW_DROP=true`
+
 ### MCP Server
 
 - `MANTICORE_MCP_SERVER_TRANSPORT` - Transport type: `stdio`, `http`, `sse` (default: `stdio`)
@@ -66,6 +83,23 @@ pip install mcp-manticore
       "env": {
         "MANTICORE_HOST": "localhost",
         "MANTICORE_PORT": "9308"
+      }
+    }
+  }
+}
+```
+
+**With write access enabled:**
+
+```json
+{
+  "mcpServers": {
+    "manticore": {
+      "command": "mcp-manticore",
+      "env": {
+        "MANTICORE_HOST": "localhost",
+        "MANTICORE_PORT": "9308",
+        "MANTICORE_ALLOW_WRITE_ACCESS": "true"
       }
     }
   }
