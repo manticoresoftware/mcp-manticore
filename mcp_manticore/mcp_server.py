@@ -355,17 +355,20 @@ def describe_table(table_name: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-async def list_documentation(search: str | None = None, use_regex: bool = False) -> str:
+async def list_documentation(search: str | None = None) -> str:
     """List all available documentation files from Manticore Search manual.
 
     Fetches file list from GitHub API (cached after first call).
     Use this tool to discover available documentation before using get_documentation.
 
     Args:
-        search: Optional search term to filter files (e.g., "knn", "full-text", "cluster")
-        use_regex: If True, treat search as regex pattern (default: False)
-            - When False: simple substring match (case-insensitive)
-            - When True: regex pattern match (case-insensitive)
+        search: Optional regex pattern to filter files (case-insensitive).
+            Simple patterns like "knn" work as substring match.
+            Use regex for advanced filtering:
+            - "knn" - matches any file containing "knn" (substring)
+            - "knn|vector" - matches files with "knn" OR "vector"
+            - "^Searching/" - matches files in Searching directory
+            - "index.*\\.md$" - matches files ending with "index...md"
 
     Returns:
         List of available documentation files, grouped by category
@@ -374,38 +377,33 @@ async def list_documentation(search: str | None = None, use_regex: bool = False)
         # List all documentation
         list_documentation()
 
-        # Simple substring search (default)
+        # Simple substring match
         list_documentation(search="knn")
 
-        # Regex search - find KNN or vector docs
-        list_documentation(search="knn|vector", use_regex=True)
+        # Regex OR pattern - find KNN or vector docs
+        list_documentation(search="knn|vector")
 
-        # Regex search - find all files in Searching directory
-        list_documentation(search="^Searching/", use_regex=True)
+        # Anchored pattern - all files in Searching directory
+        list_documentation(search="^Searching/")
 
-        # Regex search - find files ending with specific pattern
-        list_documentation(search="index.*\\.md$", use_regex=True)
+        # Complex pattern - files ending with index
+        list_documentation(search="index.*\\.md$")
     """
-    logger.info(f"Listing documentation files, search={search}, use_regex={use_regex}")
+    logger.info(f"Listing documentation files, search={search}")
 
     try:
         files = await list_documentation_files()
 
         if search:
-            if use_regex:
-                # Filter by regex pattern
-                try:
-                    pattern = re.compile(search, re.IGNORECASE)
-                    files = [f for f in files if pattern.search(f)]
-                except re.error as e:
-                    raise ToolError(
-                        f"Invalid regex pattern '{search}': {str(e)}. "
-                        "Use simple search or fix the regex pattern."
-                    ) from e
-            else:
-                # Filter by substring (case-insensitive)
-                search_lower = search.lower()
-                files = [f for f in files if search_lower in f.lower()]
+            # Filter by regex pattern (case-insensitive)
+            try:
+                pattern = re.compile(search, re.IGNORECASE)
+                files = [f for f in files if pattern.search(f)]
+            except re.error as e:
+                raise ToolError(
+                    f"Invalid regex pattern '{search}': {str(e)}. "
+                    "Use a valid regex pattern or simpler search term."
+                ) from e
 
         return format_doc_list(files)
     except httpx.HTTPError as e:

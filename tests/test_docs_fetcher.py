@@ -198,7 +198,7 @@ class TestRegexSearch:
 
     @pytest.mark.asyncio
     async def test_simple_substring_search(self):
-        """Test simple substring search (default behavior)."""
+        """Test simple substring search (works as regex too)."""
         from mcp_manticore.mcp_server import list_documentation
 
         with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
@@ -224,7 +224,7 @@ class TestRegexSearch:
                 "Creating_a_table/Local_tables.md",
             ]
 
-            result = await list_documentation(search="knn|vector", use_regex=True)
+            result = await list_documentation(search="knn|vector")
             assert "KNN.md" in result
             assert "Full_text_search.md" not in result
 
@@ -240,7 +240,7 @@ class TestRegexSearch:
                 "Creating_a_table/Local_tables.md",
             ]
 
-            result = await list_documentation(search="^Searching/", use_regex=True)
+            result = await list_documentation(search="^Searching/")
             assert "KNN.md" in result
             assert "Full_text_search.md" in result
             assert "Local_tables.md" not in result
@@ -256,7 +256,7 @@ class TestRegexSearch:
             mock_list.return_value = ["Searching/KNN.md"]
 
             with pytest.raises(ToolError, match="Invalid regex pattern"):
-                await list_documentation(search="[invalid", use_regex=True)
+                await list_documentation(search="[invalid")
 
     @pytest.mark.asyncio
     async def test_regex_search_case_insensitive(self):
@@ -269,8 +269,8 @@ class TestRegexSearch:
                 "Searching/full_text_search.md",
             ]
 
-            result = await list_documentation(search="KNN", use_regex=True)
+            result = await list_documentation(search="KNN")
             assert "KNN.md" in result
 
-            result = await list_documentation(search="knn", use_regex=True)
+            result = await list_documentation(search="knn")
             assert "KNN.md" in result
