@@ -215,7 +215,7 @@ def run_query(query: str) -> Dict[str, Any]:
     try:
         future = QUERY_EXECUTOR.submit(execute_query, query)
         try:
-            timeout_secs = get_mcp_config().query_timeout
+            timeout_secs = get_config().query_timeout
             result = future.result(timeout=timeout_secs)
             return result
         except concurrent.futures.TimeoutError:
