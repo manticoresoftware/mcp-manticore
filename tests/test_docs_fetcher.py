@@ -191,3 +191,86 @@ class TestFormatDocList:
         # Check that Alpha comes before Beta comes before Zebra
         assert result.index("Alpha.md") < result.index("Beta.md")
         assert result.index("Beta.md") < result.index("Zebra.md")
+
+
+class TestRegexSearch:
+    """Tests for regex search functionality in list_documentation."""
+
+    @pytest.mark.asyncio
+    async def test_simple_substring_search(self):
+        """Test simple substring search (default behavior)."""
+        from mcp_manticore.mcp_server import list_documentation
+
+        with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
+            mock_list.return_value = [
+                "Searching/KNN.md",
+                "Searching/Full_text_search.md",
+                "Creating_a_table/Local_tables.md",
+            ]
+
+            result = await list_documentation(search="knn")
+            assert "KNN.md" in result
+            assert "Full_text_search.md" not in result
+
+    @pytest.mark.asyncio
+    async def test_regex_search_or_pattern(self):
+        """Test regex search with OR pattern."""
+        from mcp_manticore.mcp_server import list_documentation
+
+        with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
+            mock_list.return_value = [
+                "Searching/KNN.md",
+                "Searching/Full_text_search.md",
+                "Creating_a_table/Local_tables.md",
+            ]
+
+            result = await list_documentation(search="knn|vector", use_regex=True)
+            assert "KNN.md" in result
+            assert "Full_text_search.md" not in result
+
+    @pytest.mark.asyncio
+    async def test_regex_search_anchored_pattern(self):
+        """Test regex search with anchored pattern."""
+        from mcp_manticore.mcp_server import list_documentation
+
+        with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
+            mock_list.return_value = [
+                "Searching/KNN.md",
+                "Searching/Full_text_search.md",
+                "Creating_a_table/Local_tables.md",
+            ]
+
+            result = await list_documentation(search="^Searching/", use_regex=True)
+            assert "KNN.md" in result
+            assert "Full_text_search.md" in result
+            assert "Local_tables.md" not in result
+
+    @pytest.mark.asyncio
+    async def test_regex_search_invalid_pattern(self):
+        """Test regex search with invalid pattern."""
+        from fastmcp.exceptions import ToolError
+
+        from mcp_manticore.mcp_server import list_documentation
+
+        with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
+            mock_list.return_value = ["Searching/KNN.md"]
+
+            with pytest.raises(ToolError, match="Invalid regex pattern"):
+                await list_documentation(search="[invalid", use_regex=True)
+
+    @pytest.mark.asyncio
+    async def test_regex_search_case_insensitive(self):
+        """Test that regex search is case-insensitive."""
+        from mcp_manticore.mcp_server import list_documentation
+
+        with patch("mcp_manticore.mcp_server.list_documentation_files") as mock_list:
+            mock_list.return_value = [
+                "Searching/KNN.md",
+                "Searching/full_text_search.md",
+            ]
+
+            result = await list_documentation(search="KNN", use_regex=True)
+            assert "KNN.md" in result
+
+            result = await list_documentation(search="knn", use_regex=True)
+            assert "KNN.md" in result
