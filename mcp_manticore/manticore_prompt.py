@@ -5,6 +5,8 @@ MANTICORE_PROMPT = """
 
 ## Available Tools
 - **list_documentation**: List available documentation files from Manticore Search manual
+  - ⚠️ IMPORTANT: Use OR patterns (|) to find multiple topics in ONE call
+  - Example: `list_documentation(search="knn|vector|embedding|hnsw")` - NOT multiple calls
 - **get_documentation**: Fetch specific documentation file (use this BEFORE running queries)
 - **run_query**: Execute SQL queries against Manticore Search
 - **list_tables**: List all available tables/indexes in the database
@@ -17,6 +19,7 @@ MANTICORE_PROMPT = """
 
 1. **Vector Search (KNN)** - Syntax for `knn_dist()`, vector operations, embeddings
    - Call: `get_documentation("Searching/KNN.md")`
+   - Note: Embeddings use HNSW index and KNN search - search for "knn|hnsw|vector|embedding"
 
 2. **Full-Text Operators** - MATCH syntax, operators (|, &, -, ", phrase search)
    - Call: `get_documentation("Searching/Full_text_matching/Operators.md")`
@@ -204,6 +207,18 @@ REGEX(/t.?e/)       -- matches "the", "tie", "toe", etc.
 ```
 
 ## KNN Vector Search (Semantic Search)
+
+### 🎯 Key Concepts: Embeddings, HNSW, and KNN
+- **Embeddings** = Vector representations of text (using ML models)
+- **HNSW Index** = Hierarchical Navigable Small World - the index type for fast vector search
+- **KNN Search** = K-Nearest Neighbors - the search algorithm for finding similar vectors
+- **Relationship**: Embeddings are stored in HNSW index, searched via KNN
+
+When searching documentation for vector-related features, use:
+```python
+# ONE call with OR patterns (NOT multiple calls)
+list_documentation(search="knn|hnsw|vector|embedding")
+```
 
 ### Creating Tables for Vector Search
 ```sql
