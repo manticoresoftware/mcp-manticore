@@ -4,9 +4,8 @@ This module handles all environment variable configuration with sensible default
 and type conversion.
 """
 
-from dataclasses import dataclass
 import os
-from typing import Optional
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -59,17 +58,17 @@ class ManticoreConfig:
         return int(os.getenv("MANTICORE_PORT", "9308"))
 
     @property
-    def username(self) -> Optional[str]:
+    def username(self) -> str | None:
         """Get the Manticore username (optional)."""
         return os.getenv("MANTICORE_USER")
 
     @property
-    def password(self) -> Optional[str]:
+    def password(self) -> str | None:
         """Get the Manticore password (optional)."""
         return os.getenv("MANTICORE_PASSWORD")
 
     @property
-    def database(self) -> Optional[str]:
+    def database(self) -> str | None:
         """Get the default database/index name if set."""
         return os.getenv("MANTICORE_DATABASE")
 
@@ -156,7 +155,7 @@ class MCPServerConfig:
         return int(os.getenv("MANTICORE_MCP_BIND_PORT", "8000"))
 
     @property
-    def auth_token(self) -> Optional[str]:
+    def auth_token(self) -> str | None:
         """Get the authentication token for HTTP/SSE transports."""
         return os.getenv("MANTICORE_MCP_AUTH_TOKEN", None)
 

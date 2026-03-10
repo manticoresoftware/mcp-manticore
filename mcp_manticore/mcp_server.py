@@ -1,25 +1,28 @@
-import logging
-import json
-from typing import Optional, List, Dict, Any
-import concurrent.futures
 import atexit
+import concurrent.futures
+import json
+import logging
+from typing import Any
 
+import httpx
 import manticoresearch
-from manticoresearch.api import utils_api
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from fastmcp.prompts import Prompt
 from fastmcp.exceptions import ToolError
+from fastmcp.prompts import Prompt
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from fastmcp.server.dependencies import get_context
+from manticoresearch.api import utils_api
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
-import httpx
 
-from mcp_manticore.mcp_env import get_config, get_mcp_config, TransportType
+from mcp_manticore.docs_fetcher import (
+    fetch_documentation,
+    format_doc_list,
+    list_documentation_files,
+)
 from mcp_manticore.manticore_prompt import MANTICORE_PROMPT
-from mcp_manticore.docs_fetcher import list_documentation_files, fetch_documentation, format_doc_list
-from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
-
+from mcp_manticore.mcp_env import TransportType, get_config, get_mcp_config
 
 MCP_SERVER_NAME = "mcp-manticore"
 CLIENT_CONFIG_OVERRIDES_KEY = "manticore_client_config_overrides"
@@ -82,16 +85,18 @@ async def health_check(request: Request) -> PlainTextResponse:
         # Try to create a client connection to verify Manticore connectivity
         client = create_manticore_client()
         # Execute a simple query to verify connection
-        result = client.utils.sql("SHOW TABLES")
+        client.utils.sql("SHOW TABLES")
         return PlainTextResponse("OK - Connected to Manticore Search")
     except Exception as e:
         # Return 503 Service Unavailable if we can't connect to Manticore
-        return PlainTextResponse(f"ERROR - Cannot connect to Manticore Search: {str(e)}", status_code=503)
+        return PlainTextResponse(
+            f"ERROR - Cannot connect to Manticore Search: {str(e)}", status_code=503
+        )
 
 
 def create_manticore_client():
     """Create and return a Manticore Search client instance.
-    
+
     Returns:
         Manticore Search UtilsApi client configured with connection settings
     """
@@ -103,16 +108,23 @@ def create_manticore_client():
         ctx = get_context()
         session_config_overrides = ctx.get_state(CLIENT_CONFIG_OVERRIDES_KEY)
         if session_config_overrides and not isinstance(session_config_overrides, dict):
-            logger.warning(f"{CLIENT_CONFIG_OVERRIDES_KEY} must be a dict, got {type(session_config_overrides).__name__}. Ignoring.")
+            logger.warning(
+                f"{CLIENT_CONFIG_OVERRIDES_KEY} must be a dict, "
+                f"got {type(session_config_overrides).__name__}. Ignoring."
+            )
         elif session_config_overrides:
-            logger.debug(f"Applying session-specific Manticore client config overrides: {list(session_config_overrides.keys())}")
+            logger.debug(
+                "Applying session-specific Manticore client config "
+                f"overrides: {list(session_config_overrides.keys())}"
+            )
             client_config.update(session_config_overrides)
     except RuntimeError:
         # If we're outside a request context, just proceed with the default config
         pass
 
     logger.info(
-        f"Creating Manticore Search client connection to {client_config['host']}:{client_config['port']}"
+        f"Creating Manticore Search client connection to "
+        f"{client_config['host']}:{client_config['port']}"
     )
 
     try:
@@ -120,16 +132,16 @@ def create_manticore_client():
         configuration = manticoresearch.Configuration(
             host=f"http://{client_config['host']}:{client_config['port']}"
         )
-        
+
         # Add authentication if provided
         if client_config.get("username") and client_config.get("password"):
             configuration.username = client_config["username"]
             configuration.password = client_config["password"]
-        
+
         # Create API client
         api_client = manticoresearch.ApiClient(configuration)
         utils_api_instance = utils_api.UtilsApi(api_client)
-        
+
         logger.info("Successfully connected to Manticore Search")
         return utils_api_instance
     except Exception as e:
@@ -139,10 +151,10 @@ def create_manticore_client():
 
 def execute_query(query: str):
     """Execute a SQL query against Manticore Search.
-    
+
     Args:
         query: The SQL query to execute
-        
+
     Returns:
         dict: Query results with columns and rows
     """
@@ -153,13 +165,13 @@ def execute_query(query: str):
         # - List[Dict[str, Any]] for queries like SHOW TABLES
         # - SqlObjResponse for SELECT queries with hits structure
         result = client.sql(query)
-        
+
         # Handle SqlResponse - it has an actual_instance attribute
-        if hasattr(result, 'actual_instance'):
+        if hasattr(result, "actual_instance"):
             actual = result.actual_instance
         else:
             actual = result
-        
+
         # Parse the result based on type
         if isinstance(actual, list):
             # List of dictionaries (e.g., SHOW TABLES result)
@@ -169,34 +181,34 @@ def execute_query(query: str):
                 rows = [list(row.values()) for row in actual]
                 return {"columns": column_names, "rows": rows, "total": len(rows)}
             return {"columns": [], "rows": [], "total": 0}
-        
-        elif hasattr(actual, 'hits'):
+
+        elif hasattr(actual, "hits"):
             # SqlObjResponse with hits structure (SELECT queries)
             hits = actual.hits
             if isinstance(hits, dict):
-                hits_list = hits.get('hits', [])
-                total = hits.get('total', 0)
-                
+                hits_list = hits.get("hits", [])
+                total = hits.get("total", 0)
+
                 if hits_list and len(hits_list) > 0:
                     # Extract column names from the first hit's _source
                     first_hit = hits_list[0]
-                    if '_source' in first_hit:
-                        column_names = list(first_hit['_source'].keys())
-                        rows = [list(hit.get('_source', {}).values()) for hit in hits_list]
+                    if "_source" in first_hit:
+                        column_names = list(first_hit["_source"].keys())
+                        rows = [list(hit.get("_source", {}).values()) for hit in hits_list]
                         return {"columns": column_names, "rows": rows, "total": total}
-            
+
             return {"columns": [], "rows": [], "total": 0}
-        
+
         return {"columns": [], "rows": [], "total": 0}
     except ToolError:
         raise
     except Exception as err:
         logger.error(f"Error executing query: {err}")
-        raise ToolError(f"Query execution failed: {str(err)}")
+        raise ToolError(f"Query execution failed: {str(err)}") from err
 
 
 @mcp.tool()
-def run_query(query: str) -> Dict[str, Any]:
+def run_query(query: str) -> dict[str, Any]:
     """Execute a SQL query against Manticore Search.
 
     Use this tool to run SELECT, SHOW, DESCRIBE, and other SQL queries.
@@ -221,12 +233,12 @@ def run_query(query: str) -> Dict[str, Any]:
         except concurrent.futures.TimeoutError:
             logger.warning(f"Query timed out after {timeout_secs} seconds: {query}")
             future.cancel()
-            raise ToolError(f"Query timed out after {timeout_secs} seconds")
+            raise ToolError(f"Query timed out after {timeout_secs} seconds") from None
     except ToolError:
         raise
     except Exception as e:
         logger.error(f"Unexpected error in run_query: {str(e)}")
-        raise RuntimeError(f"Unexpected error during query execution: {str(e)}")
+        raise RuntimeError(f"Unexpected error during query execution: {str(e)}") from e
 
 
 @mcp.tool()
@@ -238,29 +250,29 @@ def list_tables() -> str:
     """
     logger.info("Listing all tables")
     client = create_manticore_client()
-    
+
     try:
         result = client.sql("SHOW TABLES")
-        
+
         # Handle SqlResponse
-        if hasattr(result, 'actual_instance'):
+        if hasattr(result, "actual_instance"):
             actual = result.actual_instance
         else:
             actual = result
-        
+
         # Parse the result
         if isinstance(actual, list):
             # SHOW TABLES returns a list of dictionaries
             return json.dumps(actual, indent=2)
-        
+
         return json.dumps([])
     except Exception as e:
         logger.error(f"Error listing tables: {str(e)}")
-        raise ToolError(f"Failed to list tables: {str(e)}")
+        raise ToolError(f"Failed to list tables: {str(e)}") from e
 
 
 @mcp.tool()
-def describe_table(table_name: str) -> Dict[str, Any]:
+def describe_table(table_name: str) -> dict[str, Any]:
     """Get the schema of a specific table/index in Manticore Search.
 
     Args:
@@ -272,111 +284,110 @@ def describe_table(table_name: str) -> Dict[str, Any]:
     """
     logger.info(f"Describing table: {table_name}")
     client = create_manticore_client()
-    
+
     try:
         result = client.sql(f"DESCRIBE {table_name}")
-        
+
         # Handle SqlResponse
-        if hasattr(result, 'actual_instance'):
+        if hasattr(result, "actual_instance"):
             actual = result.actual_instance
         else:
             actual = result
-        
+
         # Parse the result
         if isinstance(actual, list):
             # DESCRIBE returns a list of dictionaries with column info
             return {"columns": actual}
-        
+
         return {"columns": []}
     except Exception as e:
         logger.error(f"Error describing table {table_name}: {str(e)}")
-        raise ToolError(f"Failed to describe table {table_name}: {str(e)}")
+        raise ToolError(f"Failed to describe table {table_name}: {str(e)}") from e
 
 
 @mcp.tool()
-async def list_documentation(search: Optional[str] = None) -> str:
+async def list_documentation(search: str | None = None) -> str:
     """List all available documentation files from Manticore Search manual.
-    
+
     Fetches file list from GitHub API (cached after first call).
     Use this tool to discover available documentation before using get_documentation.
-    
+
     Args:
         search: Optional search term to filter files (e.g., "knn", "full-text", "cluster")
-    
+
     Returns:
         List of available documentation files, grouped by category
-    
+
     Examples:
         # List all documentation
         list_documentation()
-        
+
         # Search for KNN-related docs
         list_documentation(search="knn")
-        
+
         # Search for full-text search docs
         list_documentation(search="full-text")
     """
     logger.info(f"Listing documentation files, search={search}")
-    
+
     try:
         files = await list_documentation_files()
-        
+
         if search:
             # Filter by search term
             search_lower = search.lower()
             files = [f for f in files if search_lower in f.lower()]
-        
+
         return format_doc_list(files)
     except httpx.HTTPError as e:
         logger.error(f"Failed to list documentation: {str(e)}")
-        raise ToolError(f"Failed to fetch documentation list from GitHub: {str(e)}")
+        raise ToolError(f"Failed to fetch documentation list from GitHub: {str(e)}") from e
 
 
 @mcp.tool()
 async def get_documentation(
-    file_path: str,
-    content: Optional[str] = None,
-    before: int = 0,
-    after: int = 0
+    file_path: str, content: str | None = None, before: int = 0, after: int = 0
 ) -> str:
     """Fetch documentation from Manticore Search manual.
-    
+
     Use list_documentation() first to discover available files.
-    
+
     Args:
         file_path: Path to documentation file (e.g., "Searching/KNN.md")
         content: Optional search term to filter content (returns only matching sections)
         before: Number of lines before match to include (default: 0)
         after: Number of lines after match to include (default: 0)
-    
+
     Returns:
         Documentation content as markdown text
-    
-    Examples:
-        # Get full KNN documentation
-        get_documentation("Searching/KNN.md")
-        
-        # Search for "MATCH" in full-text operators
-        get_documentation("Searching/Full_text_matching/Operators.md", content="MATCH", before=2, after=2)
-        
+
+        get_documentation(
+            "Searching/Full_text_matching/Operators.md",
+            content="MATCH", before=2, after=2
+        )
+        )
+
+        # Get data types documentation
         # Get data types documentation
         get_documentation("Creating_a_table/Data_types.md")
     """
-    logger.info(f"Fetching documentation: {file_path}, content={content}, before={before}, after={after}")
-    
+    logger.info(
+        f"Fetching documentation: {file_path}, content={content}, before={before}, after={after}"
+    )
+
     try:
         result = await fetch_documentation(file_path, content, before, after)
         return result
     except ValueError as e:
         logger.error(f"Invalid documentation path: {file_path}")
-        raise ToolError(str(e))
+        raise ToolError(str(e)) from e
     except httpx.HTTPError as e:
         logger.error(f"Failed to fetch documentation: {str(e)}")
-        raise ToolError(f"Failed to fetch documentation from GitHub: {str(e)}")
+        raise ToolError(f"Failed to fetch documentation from GitHub: {str(e)}") from e
 
 
 def manticore_initial_prompt() -> str:
-    """This prompt helps users understand how to interact and perform common operations in Manticore Search"""
+    """Prompt for Manticore Search operations."""
     return MANTICORE_PROMPT
 
 
@@ -384,7 +395,7 @@ def manticore_initial_prompt() -> str:
 manticore_prompt = Prompt.from_function(
     manticore_initial_prompt,
     name="manticore_initial_prompt",
-    description="This prompt helps users understand how to interact and perform common operations in Manticore Search",
+    description="Prompt for Manticore Search operations",
 )
 mcp.add_prompt(manticore_prompt)
 logger.info("Manticore Search prompt registered")

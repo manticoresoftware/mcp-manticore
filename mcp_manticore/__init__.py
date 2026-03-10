@@ -2,16 +2,17 @@ import os
 
 from .mcp_server import (
     create_manticore_client,
-    list_tables,
-    run_query,
     describe_table,
     get_documentation,
+    list_tables,
     manticore_initial_prompt,
+    run_query,
 )
 
 if os.getenv("MCP_MANTICORE_TRUSTSTORE_DISABLE", None) != "1":
     try:
         import truststore
+
         truststore.inject_into_ssl()
     except Exception:
         pass
