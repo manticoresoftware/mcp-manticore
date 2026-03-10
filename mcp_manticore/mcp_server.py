@@ -356,38 +356,45 @@ def describe_table(table_name: str) -> dict[str, Any]:
 
 @mcp.tool()
 async def list_documentation(search: str | None = None) -> str:
-    """List all available documentation files from Manticore Search manual.
+    """List available documentation files from Manticore Search manual.
 
-    Fetches file list from GitHub API (cached after first call).
-    Use this tool to discover available documentation before using get_documentation.
+    IMPORTANT: Make ONE call with regex OR patterns to find multiple topics at once.
+    DO NOT make multiple calls - use pipe (|) to combine patterns.
+
+    The file list is cached, so filtering is instant and local.
 
     Args:
-        search: Optional regex pattern to filter files (case-insensitive).
-            Simple patterns like "knn" work as substring match.
-            Use regex for advanced filtering:
-            - "knn" - matches any file containing "knn" (substring)
-            - "knn|vector" - matches files with "knn" OR "vector"
-            - "^Searching/" - matches files in Searching directory
-            - "index.*\\.md$" - matches files ending with "index...md"
+        search: Regex pattern to filter files (case-insensitive).
+            Use OR patterns (|) to match multiple topics in ONE call:
+
+            EFFICIENT (single call):
+            - "knn|vector|embedding" - find all vector-related docs
+            - "search|query|match" - find all search-related docs
+            - "^Searching/|^Creating_a_table/" - multiple directories
+            - "index|table|cluster" - multiple topics
+
+            INEFFICIENT (avoid multiple calls):
+            - Don't: list_documentation("knn"), then list_documentation("vector")
+            - Do: list_documentation("knn|vector")  # ONE call
 
     Returns:
-        List of available documentation files, grouped by category
+        Filtered list of documentation files, grouped by category
 
     Examples:
-        # List all documentation
+        # List all documentation (no filter)
         list_documentation()
 
-        # Simple substring match
-        list_documentation(search="knn")
+        # Find multiple topics in ONE call (RECOMMENDED)
+        list_documentation(search="knn|vector|embedding")
+        list_documentation(search="search|query|match|full-text")
+        list_documentation(search="index|table|cluster|replication")
 
-        # Regex OR pattern - find KNN or vector docs
-        list_documentation(search="knn|vector")
+        # Directory-specific searches
+        list_documentation(search="^Searching/")  # all in Searching/
+        list_documentation(search="^Creating_a_table/")  # all in Creating_a_table/
 
-        # Anchored pattern - all files in Searching directory
-        list_documentation(search="^Searching/")
-
-        # Complex pattern - files ending with index
-        list_documentation(search="index.*\\.md$")
+        # Combine directories and topics
+        list_documentation(search="^Searching/|^Creating_a_table/")
     """
     logger.info(f"Listing documentation files, search={search}")
 
