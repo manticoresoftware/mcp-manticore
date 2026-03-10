@@ -17,7 +17,7 @@ dependencies = [
 mcp-manticore = "mcp_manticore.main:main"
 
 [project.urls]
-Home = "https://github.com/manticoresoftware/manticoresearch-mcp"
+Home = "https://github.com/manticoresoftware/mcp-manticore"
 
 [project.optional-dependencies]
 dev = [

@@ -101,8 +101,8 @@ export MANTICORE_MCP_AUTH_DISABLED=true
 
 ```bash
 # Setup
-git clone https://github.com/manticoresoftware/manticoresearch-mcp.git
-cd manticoresearch-mcp
+git clone https://github.com/manticoresoftware/mcp-manticore.git
+cd mcp-manticore
 uv sync
 
 # Run
