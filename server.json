@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.manticoresoftware/mcp-manticore",
+  "description": "MCP server for Manticore Search — enables AI assistants to query and manage Manticore Search databases directly.",
+  "repository": {
+    "url": "https://github.com/manticoresoftware/mcp-manticore",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "mcp-manticore",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
+
