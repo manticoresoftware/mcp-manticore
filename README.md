@@ -1,7 +1,5 @@
 # Manticore Search MCP Server
 
-mcp-name: io.github.manticoresoftware/mcp-manticore
-
 [![PyPI - Version](https://img.shields.io/pypi/v/mcp-manticore)](https://pypi.org/project/mcp-manticore)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
@@ -354,3 +352,7 @@ uv publish
 ## License
 
 [Apache-2.0](LICENSE)
+
+<!-- Need to add this line for MCP registry publication -->
+<!-- mcp-name: io.github.manticoresoftware/mcp-manticore -->
+
