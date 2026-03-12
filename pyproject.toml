@@ -1,6 +1,6 @@
 [project]
 name = "mcp-manticore"
-version = "0.1.0"
+version = "0.1.1"
 mcpName = "io.github.manticoresoftware/mcp-manticore"
 description = "An MCP server for Manticore Search."
 readme = "README.md"
