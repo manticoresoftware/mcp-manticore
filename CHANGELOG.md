@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.2] - 2026-03-12
+
+### 📋 Release Summary
+
+Updated documentation formatting to ensure seamless compatibility with MCP registry listings.
+
+
+### 📚 Documentation & Examples
+
+- **readme**: move mcp-name to comment for registry compatibility `1d3ce097`
+
+### 📊 Release Summary
+
+**Total commits**: 1 across 1 categories
+
+📚 **1** documentation update - *Better developer experience*
+
 All notable changes to this project will be documented in this file.
 
 ## [0.1.1] - 2026-03-12
