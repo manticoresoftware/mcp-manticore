@@ -5,6 +5,10 @@
 
 MCP server for Manticore Search — enables AI assistants to query and manage Manticore Search databases directly.
 
+<a href="https://glama.ai/mcp/servers/manticoresoftware/mcp-manticore">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/manticoresoftware/mcp-manticore/badge" alt="Manticore Search MCP server" />
+</a>
+
 ## Quick Start
 
 ### Installation
@@ -355,4 +359,3 @@ uv publish
 
 <!-- Need to add this line for MCP registry publication -->
 <!-- mcp-name: io.github.manticoresoftware/mcp-manticore -->
-
