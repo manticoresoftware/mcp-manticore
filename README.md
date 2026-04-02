@@ -196,9 +196,116 @@ Or open directly in Windsurf: `Cmd/Ctrl + Shift + P` → "MCP Configuration Pane
 </details>
 
 <details>
-<summary><strong>VS Code (with VSCode Copilot)</strong></summary>
+<summary><strong>OpenAI Codex</strong></summary>
 
-VS Code uses the same MCP configuration as Cursor. Edit `~/.cursor/mcp.json`:
+Run in terminal:
+
+```bash
+codex mcp add manticore -- uvx mcp-manticore
+```
+
+With environment variables:
+
+```bash
+codex mcp add manticore \
+  --env MANTICORE_HOST=localhost \
+  --env MANTICORE_PORT=9308 \
+  -- uvx mcp-manticore
+```
+
+Or edit `~/.codex/config.toml` directly:
+
+```toml
+[mcp_servers.manticore]
+command = "uvx"
+args = ["mcp-manticore"]
+env = { MANTICORE_HOST = "localhost", MANTICORE_PORT = "9308" }
+```
+
+</details>
+
+<details>
+<summary><strong>Gemini CLI</strong></summary>
+
+Edit `~/.gemini/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "manticore": {
+      "command": "uvx",
+      "args": ["mcp-manticore"],
+      "env": {
+        "MANTICORE_HOST": "localhost",
+        "MANTICORE_PORT": "9308"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>VS Code (GitHub Copilot)</strong></summary>
+
+Create `.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "servers": {
+    "manticore": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-manticore"],
+      "env": {
+        "MANTICORE_HOST": "localhost",
+        "MANTICORE_PORT": "9308"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Cline</strong></summary>
+
+1. Open Cline panel in VS Code
+2. Click the MCP Servers icon
+3. Click "Configure" → "Add Server"
+4. Select "Command (stdio)" and enter:
+   - Name: `manticore`
+   - Command: `uvx mcp-manticore`
+
+Or edit the MCP settings file directly (accessible via the MCP Servers icon → "Edit Config"):
+
+```json
+{
+  "mcpServers": {
+    "manticore": {
+      "command": "uvx",
+      "args": ["mcp-manticore"],
+      "env": {
+        "MANTICORE_HOST": "localhost",
+        "MANTICORE_PORT": "9308"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Roo Code</strong></summary>
+
+1. Open Roo Code panel in VS Code
+2. Click the MCP Servers icon → "Edit MCP Settings"
+3. Add the server configuration
+
+Or create `.roo/mcp.json` in your project root:
 
 ```json
 {
